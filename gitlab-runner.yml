@@ -1,0 +1,83 @@
+---
+- name: Make config and install gitlab-runner
+  hosts: docker
+  gather_facts: no
+  become: yes
+
+  vars:
+    gitlab_url  : https://gitlab.com/
+    gitlab_token: c1G1*****7CBA-
+    gitlab_exec : shell
+    gitlab_pkg  : pkg.sh
+
+  tasks:
+    - name: Get [gitlab-runner] repo
+      get_url:
+        url: https://packages.gitlab.com/install/repositories/runner/gitlab-runner/script.rpm.sh
+        dest: /tmp/{{ gitlab_pkg }}
+        mode: 0744
+
+    - name: Add [gitlab-runner] repo
+      shell: "/tmp/{{ gitlab_pkg }}"
+      args:
+        executable: /bin/bash
+
+    - name: Add [docker-ce] repo
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docer-ce.repo
+
+    - name: Install [git] pkg
+      yum:
+        name: git
+        state: latest
+
+    - name: Install [make] pkg
+      yum:
+        name: make
+        state: latest
+
+    - name: Install [jq] pkg
+      yum:
+        name: jq
+        state: latest
+
+
+    - name: Install [docker-ce] pkg
+      yum:
+        name: docker-ce
+        state: latest
+
+    - name: Install [gitlab-runner] pkg
+      yum:
+        name: gitlab-runner
+        state: latest
+
+
+    - name: Add the gitlab-runer group 'docker'
+      user:
+        name  : gitlab-runner
+        groups: docker
+        append: yes
+
+    - name: Add the skex86ns group 'docker'
+      user:
+        name  : skex86ns
+        groups: docker
+        append: yes
+
+    - name: Start service [docker]
+      service:
+        name   : docker 
+        state  : started
+        enabled: yes
+
+    - name: Register runner to GitLab
+      shell: gitlab-runner register --non-interactive --url "{{ gitlab_url }}" --registration-token "{{ gitlab_token }}" --executor "{{ gitlab_exec }}" --locked="false" --access-level="not_protected" --description "docker-runner"
+
+    - name: Start service [gitlab-runner]
+      service:
+        name   : gitlab-runner
+        state  : started
+        enabled: yes
+...
